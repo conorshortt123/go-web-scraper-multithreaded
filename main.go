@@ -27,7 +27,7 @@ func main() {
 	}
 }
 
-// Scrapes for occurences of a word (case-insensitive)
+// Scrapes for occurences of a word
 func scrape(website, searchWord string) []string {
 	// Slice to store occurrences
 	var occurrences []string
@@ -40,7 +40,7 @@ func scrape(website, searchWord string) []string {
 		// Extract text content from the body
 		bodyText := e.Text
 
-		// Check for occurrences of the word "ChatGPT" (case-insensitive)
+		// Check for occurrences of the word
 		if strings.Contains(strings.ToLower(bodyText), strings.ToLower(searchWord)) {
 			occurrences = append(occurrences, e.Request.URL.String())
 		}
