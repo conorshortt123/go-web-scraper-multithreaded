@@ -8,6 +8,8 @@ import (
 )
 
 func main() {
+	keyword := "chatgpt"
+
 	websites := []string{
 		"https://en.wikipedia.org/wiki/Main_Page",
 		"https://www.imdb.com/",
@@ -23,7 +25,11 @@ func main() {
 
 	// Loop over websites and scrape
 	for _, website := range websites {
-		scrape(website, "chatgpt")
+		occurrences := scrape(website, keyword)
+
+		for _, occurence := range occurrences {
+			log.Printf("Found occurence of word %s in website: %s", keyword, occurence)
+		}
 	}
 }
 
