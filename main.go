@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log"
+	"strings"
 
 	"github.com/gocolly/colly/v2"
 )
@@ -27,14 +27,23 @@ func main() {
 	}
 }
 
-func scrape(website string) {
+// Scrapes for occurences of a word (case-insensitive)
+func scrape(website string) []string {
+	// Slice to store occurrences
+	var occurrences []string
+
 	// Create a new collector
 	c := colly.NewCollector()
 
 	// Set up a callback for when a visited HTML element is found
-	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
-		link := e.Attr("href")
-		fmt.Println(link)
+	c.OnHTML("body", func(e *colly.HTMLElement) {
+		// Extract text content from the body
+		bodyText := e.Text
+
+		// Check for occurrences of the word "ChatGPT" (case-insensitive)
+		if strings.Contains(strings.ToLower(bodyText), "chatgpt") {
+			occurrences = append(occurrences, e.Request.URL.String())
+		}
 	})
 
 	// Set up error handling
@@ -47,4 +56,6 @@ func scrape(website string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	return occurrences
 }
