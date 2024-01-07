@@ -1,8 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
-	"log"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -16,42 +17,29 @@ type ScrapedResult struct {
 	ErrorMessage string
 }
 
+var wg sync.WaitGroup
+var filePath = "urls.txt"
+
 func main() {
-	// List of websites to search
-	websites := []string{
-		"https://en.wikipedia.org/wiki/Main_Page",
-		"https://www.imdb.com/",
-		"https://github.com/trending",
-		"https://news.ycombinator.com/",
-		"https://www.reddit.com/r/programming/",
-		"https://openweathermap.org/",
-		"https://www.amazon.com/Best-Sellers/zgbs",
-		"https://www.goodreads.com/",
-		"https://stackoverflow.com/questions",
-		"https://www.cnn.com/",
-	}
-
-	// Channel to receive results of scrape from goroutines i.e results of multi threaded execution
-	results := make(chan ScrapedResult, len(websites))
-
-	// WaitGroup to wait for goroutines to finish
-	var wg sync.WaitGroup
-
-	// Increment the counter for each goroutine
-	wg.Add(len(websites))
-
-	// Prompt the user for input
-	fmt.Print("Enter the keyword you want to search websites for: ")
-
 	// Declare a variable to store user input
 	var keyword string
-
+	// Prompt the user for input
+	fmt.Print("Enter the keyword you want to search websites for: ")
 	// Read user input from the console
 	_, err := fmt.Scan(&keyword)
 	if err != nil {
 		fmt.Println("Error reading input:", err)
 		return
 	}
+
+	// Read list of URLs to search
+	websites := readURLsFromFile(filePath)
+
+	// Channel to receive results of scrape from goroutines i.e results of multi threaded execution
+	results := make(chan ScrapedResult, len(websites))
+
+	// Increment the counter for each goroutine
+	wg.Add(len(websites))
 
 	// Loop over websites and scrape
 	for _, url := range websites {
@@ -64,11 +52,9 @@ func main() {
 		close(results)
 	}()
 
-	// Process results from the channel
+	// Output results
 	for result := range results {
-		if result.ErrorMessage != "" {
-			fmt.Printf("Error scraping %s: %s\n", result.WebsiteURL, result.ErrorMessage)
-		} else {
+		if isEmpty(result.ErrorMessage) {
 			fmt.Printf("Website: %s : Captured keyword %s from text: %s\n", result.WebsiteURL, keyword, result.CapturedText)
 		}
 	}
@@ -100,17 +86,14 @@ func scrape(url string, searchWord string, wg *sync.WaitGroup, ch chan<- Scraped
 
 	// Set up error handling
 	c.OnError(func(r *colly.Response, err error) {
-		log.Println("Request URL:", r.Request.URL, "failed with response:", r, "\nError:", err)
+		//log.Println("Request URL:", r.Request.URL, "failed")
 
 		// Assign the error message to the result structure
 		result.ErrorMessage = err.Error()
 	})
 
 	// Start scraping from the provided URL
-	err := c.Visit(url)
-	if err != nil {
-		log.Printf("Error scraping %s: %v\n", url, err)
-	}
+	c.Visit(url)
 
 	// Send the result to the channel if text was captured
 	if !isEmpty(result.CapturedText) {
@@ -146,6 +129,30 @@ func captureText(body string, searchWord string) string {
 	cleanedText := re.ReplaceAllString(surroundingText, " ")
 
 	return cleanedText
+}
+
+func readURLsFromFile(filePath string) []string {
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Println("Error reading URLs:", err)
+		return nil
+	}
+	defer file.Close()
+
+	var urls []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		url := strings.TrimSpace(scanner.Text())
+		if url != "" {
+			urls = append(urls, url)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Error reading URLs:", err)
+	}
+
+	return urls
 }
 
 func isEmpty(s string) bool {
